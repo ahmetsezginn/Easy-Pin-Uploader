@@ -1,7 +1,7 @@
 """
-@author: Maxime.
+@author: ahmetsezginn.
 
-Github: https://github.com/maximedrn
+Github: https://github.com/ahmetsezginn
 Version: 1.1
 """
 
@@ -188,12 +188,19 @@ class Pinterest:
                 self.clickable(  # Select pinboard.
                     f'//div[text()="{data.pinboard}"]/../../..')
             except Exception:
-                raise Exception('Pinboard name is invalid.')
-            # Upload IMG
+                print('Pinboard name is invalid.')
+                self.clickable(  # Select pinboard.
+                    f'//div[text()="Create board"]/../../..')
+                # Locate the input tag for the pinboard name and send the data.pinboard value
+                self.send_keys('//input[@id="boardEditName"]', data.pinboard)
+                # Locate and click the button to create the board
+                self.clickable('//button[@data-test-id="board-form-submit-button"]')
+                sleep(10)  # Wait for the pinboard to be selected.
+
+            # Upload IMG file.
             self.driver.find_element(by=By.XPATH, value="//input[contains(@id, 'media-upload-input')]").send_keys(data.file_path)
             self.send_keys(  # Input a title.
                 '//textarea[contains(@id,"pin-draft-title")]', data.title)
-            sleep(1)
             self.send_keys(  # Input a description.
                 '//*[@role="combobox"]/div/div/div', data.description)
             self.clickable(  # Click on "Add alt text" button.
@@ -202,6 +209,7 @@ class Pinterest:
                                    '@id, "pin-draft-alttext")]', data.alt_text)
             self.send_keys(  # Input a link.
                 '//textarea[contains(@id, "pin-draft-link")]', data.link)
+            sleep(1)  # Wait for the link to be added.
             if len(data.date) > 0:
                 date, time = data.date.split(' ')
                 # Select "Publish later" radio button.
@@ -265,8 +273,7 @@ def data_file() -> str:
                 file_number += 1;
                 files_list.append(file);
                 print(f'{file_number} - {os.path.abspath(file)}')
-        answer = 2
-        cls()  # Clear console.
+        answer = 1
 
         if int(answer) == 0:  # Browse a file on PC.
             print(f'{yellow}Browsing on your computer...{reset}')
@@ -311,58 +318,75 @@ def update_txt_number(txt_file_path, new_number):
     with open(txt_file_path, 'w') as file:
         file.write(str(new_number))
 
-def find_and_print_row(file_path, row_number):
-    # Excel dosyasını tekrar yükleyip yazmak için openpyxl kullanacağız
+import openpyxl
+import json
+import os
+
+def find_and_print_row(file_path, row_number,json_file_path):
+    # Excel dosyasını yüklemek için openpyxl kullanıyoruz
     workbook = openpyxl.load_workbook(file_path)
     sheet = workbook.active
 
-    # Belirtilen satır numarasındaki hücreleri kontrol et
+    # Belirtilen satır numarasındaki hücreleri al
     row = sheet[row_number]
-    print("pinboard;; file_path;; title;; description;; alt_text;; link;; date")
-    
-    row_data = [
-        row[0].value if row[0].value is not None else '',  # pinboard
-        row[1].value if row[1].value is not None else '',  # file_path
-        (row[2].value[:100] if row[2].value is not None else ''),  # title (100 karakter sınırı)
-        (row[3].value[:500] if row[3].value is not None else ''),  # description (500 karakter sınırı)
-        (row[4].value[:500] if row[4].value is not None else ''),  # alt_text (500 karakter sınırı)
-        row[5].value if row[5].value is not None else '',  # link
-        row[6].value if row[6].value is not None else ''   # date
-    ]
-    print(";;".join(row_data))
 
-    # CSV dosyasını güncelleme
-    csv_file_path = 'data/csv_structure.csv'
+    # Satır verilerini bir sözlük (dictionary) olarak yapılandırıyoruz
+    row_data = {
+        'pinboard': row[0].value if row[0].value is not None else '',
+        'file_path': row[1].value if row[1].value is not None else '',
+        'title': (row[2].value[:100] if row[2].value is not None else ''),          # 100 karakter sınırı
+        'description': (row[3].value[:500] if row[3].value is not None else ''),    # 500 karakter sınırı
+        'alt_text': (row[4].value[:500] if row[4].value is not None else ''),      # 500 karakter sınırı
+        'link': row[5].value if row[5].value is not None else '',
+        'date': ''
+    }
 
-    # CSV dosyasını açma veya oluşturma ve içeriğini silme
-    with open(csv_file_path, 'w', newline='', encoding='utf-8') as csvfile:
-        # Başlık satırını yazma
-        csvfile.write("pinboard;; file_path;; title;; description;; alt_text;; link;; date\n")
-        # Satır verilerini yazma
-        csvfile.write(";;".join(row_data) + "\n")
+    # JSON formatında satır verisini yazdır
+    json_output = json.dumps(row_data, ensure_ascii=False, indent=4)
+    print(json_output)
 
-
-
+    if not os.path.exists(json_file_path):
+        initial_data = {"pin": [row_data]}
+        with open(json_file_path, 'w', encoding='utf-8') as json_file:
+            json.dump(initial_data, json_file, ensure_ascii=False, indent=4)
+    else:
+        with open(json_file_path, 'r+', encoding='utf-8') as json_file:
+            try:
+                data = json.load(json_file)
+                if "pin" not in data:
+                    data["pin"] = []
+            except json.JSONDecodeError:
+                data = {"pin": []}
+            
+            data["pin"].append(row_data)
+            json_file.seek(0)
+            json.dump(data, json_file, ensure_ascii=False, indent=4)
+            json_file.truncate()  # Dosyanın geri kalanını silmek için
 
 if __name__ == '__main__':
     # Satır numarasını içeren txt dosyasının yolu
     txt_file_path = 'last_number_on_excel.txt'
     # Excel dosyasının yolu
     excel_file_path = 'publish_info_excel.xlsx'
-    # 1. Adım: Satır numarasını txt dosyasından al ve belirtilen satırdaki hücreyi güncelle
-    row_number = get_row_number_from_file(txt_file_path)
-    update_excel_row(excel_file_path, row_number)
+    # Silinecek dosyanın yolu
+    json_file_path = 'data/json_structure.json'
+    upload_counter = 0
+    while upload_counter < 10:
+        # 1. Adım: Satır numarasını txt dosyasından al ve belirtilen satırdaki hücreyi güncelle
+        row_number = get_row_number_from_file(txt_file_path)
+        update_excel_row(excel_file_path, row_number)
 
-    # 2. Adım: Excel dosyasını tekrar yükleyip belirtilen satırdaki bilgileri yazdır ve CSV dosyasına yaz
-    find_and_print_row(excel_file_path, row_number)
+        # 2. Adım: Excel dosyasını tekrar yükleyip belirtilen satırdaki bilgileri yazdır ve CSV dosyasına yaz
+        find_and_print_row(excel_file_path, row_number,json_file_path)
 
-    # 3. Adım: last_number'ı bir artır ve txt dosyasını güncelle
-    new_number = row_number + 1
-    update_txt_number(txt_file_path, new_number)
+        # 3. Adım: last_number'ı bir artır ve txt dosyasını güncelle
+        new_number = row_number + 1
+        update_txt_number(txt_file_path, new_number)
+        upload_counter += 1
     cls()  # Clear console.
 
     print(f'{green}Made by Maxime.'
-          f'\n@Github: https://github.com/maximedrn{reset}')
+        f'\n@Github: https://github.com/ahmetsezginn{reset}')
 
     email = read_file('email', '\nWhat is your Pinterest email? ')
     password = read_file('password', '\nWhat is your Pinterest password? ')
@@ -377,6 +401,15 @@ if __name__ == '__main__':
         check = data.check_data()
         if not check[0]:
             print(f'{red}Data of pin n°{pin + 1}/{data.length} is incorrect.'
-                  f'\nError: {check[1]}{reset}')
+                f'\nError: {check[1]}{reset}')
         else:
             pinterest.upload_pins(pin)  # Upload it.
+
+
+    # Dosyanın varlığını kontrol et ve sil
+    if os.path.exists(json_file_path):
+        os.remove(json_file_path)
+        print(f"Dosya silindi: {json_file_path}")
+    else:
+        print(f"Dosya bulunamadı: {json_file_path}")
+
