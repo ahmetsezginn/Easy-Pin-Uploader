@@ -152,7 +152,7 @@ class Pinterest:
         except Exception:  # Use JavaScript.
             self.driver.execute_script(f'arguments[0].innerText = "{keys}"',
                                        self.visible(element))
-
+    # This function checks for window handles and waits until a specific tab is opened.
     def window_handles(self, window_number: int) -> None:
         """Check for window handles and wait until a specific tab is opened."""
         WDW(self.driver, 30).until(lambda _: len(
@@ -244,7 +244,7 @@ def cls() -> None:
     # Clear console for Windows using 'cls' and Linux & Mac using 'clear'.
     os.system('cls' if os.name == 'nt' else 'clear')
 
-
+# This function read the file and ask for data to write in text file.
 def read_file(file_: str, question: str) -> str:
     """Read file or ask for data to write in text file."""
     if not os.path.isfile(f'assets/{file_}.txt'):
@@ -260,61 +260,34 @@ def read_file(file_: str, question: str) -> str:
                 file.write(text)  # Write the text in file.
                 print(f'{green}Saved.{reset}')
         return text
-
-
-def data_file() -> str:
-    """Read the data folder and extract JSON, CSV and XLSX files."""
-    while True:
-        file_number, files_list = 0, []
-        print(f'{yellow}\nChoose your file:{reset}\n0 - Browse a file on PC.')
-        for files in [glob(f'data/{extension}')  # Files of the data folder.
-                      for extension in ['*.json', '*.csv', '*.xlsx']]:
-            for file in files:
-                file_number += 1;
-                files_list.append(file);
-                print(f'{file_number} - {os.path.abspath(file)}')
-        answer = 1
-
-        if int(answer) == 0:  # Browse a file on PC.
-            print(f'{yellow}Browsing on your computer...{reset}')
-            from tkinter import Tk  # Tkinter module: pip install tk
-            from tkinter.filedialog import askopenfilename
-            Tk().withdraw()  # Hide Tkinter tab.
-            return askopenfilename(filetypes=[('', '.json .csv .xlsx')])
-        elif int(answer) <= len(files_list):
-            return files_list[int(answer) - 1]  # Return path of file.
-        print(f'{red}File doesn\'t exist.{reset}')
-
+# This function read the row number from the txt file
 def get_row_number_from_file(file_path):
     with open(file_path, 'r') as file:
         row_number = file.readline().strip()
     return int(row_number)
-
+# This function write when pin has been uploaded
 def update_excel_row(file_path, row_number):
-    # Excel dosyasını yükleme
+    # Loading Excel file
     workbook = openpyxl.load_workbook(file_path)
     sheet = workbook.active
 
-    # Mevcut tarih ve saati alma
+    # Get current date and time
     now = datetime.now()
-    # 1 gün sonrasına ve 30 dakikalık dilimlere yuvarlama
-    rounded_future = (now + timedelta(days=1, minutes=30 - now.minute % 30)).replace(second=0, microsecond=0)
-    # Hücreye tarih ve saati 12 saatlik formatta yazma
-    formatted_date = rounded_future.strftime("%d/%m/%Y %I:%M")
-    sheet[f'G{row_number}'] = formatted_date
+    rounded_future = now
+    sheet[f'G{row_number}'] = rounded_future
 
-    # Dosyayı kaydetme
+    # Save the file
     workbook.save(file_path)
 
 def read_and_update_txt_number(txt_file_path):
-    # last_number_on_excel.txt dosyasından numarayı oku
+    # Read the number from last_number_on_excel.txt
     with open(txt_file_path, 'r') as file:
         last_number = file.read().strip()
 
     return int(last_number)
 
 def update_txt_number(txt_file_path, new_number):
-    # last_number_on_excel.txt dosyasını yazma modunda aç ve yeni numarayı yaz
+    # open last_number_on_excel.txt in write mode and write the new number
     with open(txt_file_path, 'w') as file:
         file.write(str(new_number))
 
@@ -323,20 +296,20 @@ import json
 import os
 
 def find_and_print_row(file_path, row_number,json_file_path):
-    # Excel dosyasını yüklemek için openpyxl kullanıyoruz
+    # We use openpyxl to load the Excel file
     workbook = openpyxl.load_workbook(file_path)
     sheet = workbook.active
 
-    # Belirtilen satır numarasındaki hücreleri al
+    # Get cells in the specified row number
     row = sheet[row_number]
 
-    # Satır verilerini bir sözlük (dictionary) olarak yapılandırıyoruz
+    # We structure the row data as a dictionary
     row_data = {
         'pinboard': row[0].value if row[0].value is not None else '',
         'file_path': row[1].value if row[1].value is not None else '',
-        'title': (row[2].value[:100] if row[2].value is not None else ''),          # 100 karakter sınırı
-        'description': (row[3].value[:500] if row[3].value is not None else ''),    # 500 karakter sınırı
-        'alt_text': (row[4].value[:500] if row[4].value is not None else ''),      # 500 karakter sınırı
+        'title': (row[2].value[:100] if row[2].value is not None else ''),          # 100 character limit
+        'description': (row[3].value[:500] if row[3].value is not None else ''),    # 500 character limit
+        'alt_text': (row[4].value[:500] if row[4].value is not None else ''),      # 500 character limit
         'link': row[5].value if row[5].value is not None else '',
         'date': ''
     }
@@ -361,38 +334,42 @@ def find_and_print_row(file_path, row_number,json_file_path):
             data["pin"].append(row_data)
             json_file.seek(0)
             json.dump(data, json_file, ensure_ascii=False, indent=4)
-            json_file.truncate()  # Dosyanın geri kalanını silmek için
+            json_file.truncate()  # To delete the rest of the file
 
 if __name__ == '__main__':
-    # Satır numarasını içeren txt dosyasının yolu
+    # Path to the txt file containing the line number
     txt_file_path = 'last_number_on_excel.txt'
-    # Excel dosyasının yolu
+    # Path to excel file
     excel_file_path = 'publish_info_excel.xlsx'
-    # Silinecek dosyanın yolu
+    # temporary json file path
     json_file_path = 'data/json_structure.json'
+    pin_upload_number=10
+    if os.path.exists(json_file_path):
+        with open(json_file_path, 'w', encoding='utf-8') as json_file:
+            json_file.write('{}')  # Clear the file by writing an empty JSON object.
+        cls()  # Clear console.
     upload_counter = 0
-    while upload_counter < 10:
-        # 1. Adım: Satır numarasını txt dosyasından al ve belirtilen satırdaki hücreyi güncelle
+    while upload_counter < pin_upload_number:
+        # Step 1: Get the row number from the txt file and update the cell in the specified row
         row_number = get_row_number_from_file(txt_file_path)
         update_excel_row(excel_file_path, row_number)
 
-        # 2. Adım: Excel dosyasını tekrar yükleyip belirtilen satırdaki bilgileri yazdır ve CSV dosyasına yaz
+        # Step 2: Reload the Excel file, print the information in the specified row and write it to a CSV file
         find_and_print_row(excel_file_path, row_number,json_file_path)
 
-        # 3. Adım: last_number'ı bir artır ve txt dosyasını güncelle
+        # Step 3: increment last_number by one and update txt file
         new_number = row_number + 1
         update_txt_number(txt_file_path, new_number)
         upload_counter += 1
     cls()  # Clear console.
 
-    print(f'{green}Made by Maxime.'
+    print(f'{green}Made by ahmetsezginn.'
         f'\n@Github: https://github.com/ahmetsezginn{reset}')
 
     email = read_file('email', '\nWhat is your Pinterest email? ')
     password = read_file('password', '\nWhat is your Pinterest password? ')
 
-    file = data_file()  # Ask for file.
-    data = Data(file, os.path.splitext(file)[1])  # Init Data class.
+    data = Data(json_file_path, os.path.splitext(json_file_path)[1])  # Init Data class.
     pinterest = Pinterest(email, password)  # Init Pinterest class.
     pinterest.login()
 
@@ -406,10 +383,10 @@ if __name__ == '__main__':
             pinterest.upload_pins(pin)  # Upload it.
 
 
-    # Dosyanın varlığını kontrol et ve sil
+    # Check for file existence and delete
     if os.path.exists(json_file_path):
         os.remove(json_file_path)
-        print(f"Dosya silindi: {json_file_path}")
+        print(f"File deleted: {json_file_path}")
     else:
-        print(f"Dosya bulunamadı: {json_file_path}")
+        print(f"File not found: {json_file_path}")
 
